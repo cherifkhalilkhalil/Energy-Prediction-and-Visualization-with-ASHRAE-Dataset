@@ -1,0 +1,818 @@
+---
+title: "Project CPT_S"
+author: "Khalil Cherif"
+date: "2024-10-24"
+output: pdf_document
+---
+
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+
+# Load the building metadata file
+setwd("C:/Users/Khalil/Desktop/Fall 24/CPT_S 575/Project/Data")
+building_metadata <- read.csv("building_metadata.csv")
+
+# Load the energy consumption file (train or test data)
+setwd("C:/Users/Khalil/Desktop/Fall 24/CPT_S 575/Project/Data")
+energy_data <- read.csv("train 1-2.csv")  # Adjust file path as necessary
+
+# Merge the building metadata and energy data on the 'building_id' column
+merged_data <- merge(building_metadata, energy_data, by = "building_id")
+
+# Summarize the meter readings by building_id to get total energy consumption
+summarized_data <- merged_data %>%
+  group_by(building_id, square_feet) %>%
+  summarize(total_energy_consumption = sum(meter_reading, na.rm = TRUE))
+
+# Plot square footage against total energy consumption using ggplot2
+ggplot(summarized_data, aes(x = square_feet, y = total_energy_consumption)) +
+  geom_point(color = 'blue', alpha = 0.7) +
+  labs(title = "Total Energy Consumption vs Building Size",
+       x = "Square Feet of Building",
+       y = "Total Energy Consumption") +
+  theme_minimal() +
+  geom_smooth(method = "lm", col = "red", se = FALSE)  # Adds a linear trend line
+```
+## Building Metadata
+
+```{r}
+# Load the building metadata file
+setwd("C:/Users/Khalil/Desktop/Fall 24/CPT_S 575/Project/Data")
+building_metadata <- read.csv("building_metadata.csv")
+
+# Load the energy consumption file (train or test data)
+setwd("C:/Users/Khalil/Desktop/Fall 24/CPT_S 575/Project/Data")
+energy_data <- read.csv("train 1-2.csv")  # Adjust file path as necessary
+
+# Merge the building metadata and energy data on the 'building_id' column
+merged_data <- merge(building_metadata, energy_data, by = "building_id")
+
+# Summarize the total energy consumption by building primary use
+summarized_data <- merged_data %>%
+  group_by(primary_use) %>%
+  summarize(total_energy_consumption = sum(meter_reading, na.rm = TRUE))
+
+# Create a bar plot using ggplot2
+ggplot(summarized_data, aes(x = reorder(primary_use, -total_energy_consumption), y = total_energy_consumption)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(title = "Total Energy Consumption by Building Type",
+       x = "Building Type (Primary Use)",
+       y = "Total Energy Consumption") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels for better readability
+```
+## Weather Test
+
+```{r}
+setwd("C:/Users/Khalil/Desktop/Fall 24/CPT_S 575/Project/Data")
+
+# Load the weather data
+weather_data <- read.csv("weather_test.csv")  # Adjust the file path as necessary
+
+# Summarize the average air temperature for each site
+summarized_data <- weather_data %>%
+  group_by(site_id) %>%
+  summarize(average_air_temperature = mean(air_temperature, na.rm = TRUE))
+
+# Create a box plot for air temperature across different sites
+ggplot(weather_data, aes(x = factor(site_id), y = air_temperature)) +
+  geom_boxplot(fill = "lightblue", color = "darkblue") +
+  labs(title = "Distribution of Air Temperature by Site",
+       x = "Site ID",
+       y = "Air Temperature (°C)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels for better readability
+```
+
+```{r}
+# Scatter plot showing Wind Speed vs Wind Direction
+ggplot(weather_data, aes(x = wind_direction, y = wind_speed, color = factor(site_id))) +
+  geom_point(alpha = 0.7) +
+  labs(title = "Wind Speed vs Wind Direction by Site",
+       x = "Wind Direction (degrees)",
+       y = "Wind Speed (m/s)") +
+  theme_minimal()
+```
+## Training the Data
+```{r}
+setwd("C:/Users/Khalil/Desktop/Fall 24/CPT_S 575/Project/Data")
+install.packages("randomForest")
+```
+
+
+```{r}
+install.packages("caret")
+install.packages("randomForest")
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+
+
+# Load the datasets
+setwd("C:/Users/Khalil/Desktop/Fall 24/CPT_S 575/Project/Data")
+building_metadata <- read.csv("building_metadata.csv")
+train_data <- read.csv("train 1-2.csv")
+weather_train <- read.csv("weather_train.csv")
+
+# Merge datasets by building_id and site_id
+train_merged <- merge(train_data, building_metadata, by = "building_id")
+train_merged <- merge(train_merged, weather_train, by = c("site_id", "timestamp"))
+
+# Convert timestamp to datetime and extract features (hour, day, month)
+train_merged$timestamp <- as.POSIXct(train_merged$timestamp)
+train_merged$hour <- format(train_merged$timestamp, "%H")
+train_merged$day <- format(train_merged$timestamp, "%d")
+train_merged$month <- format(train_merged$timestamp, "%m")
+
+# Select relevant features for the model
+features <- c("square_feet", "year_built", "floor_count", "air_temperature", 
+              "dew_temperature", "precip_depth_1_hr", "cloud_coverage", 
+              "sea_level_pressure", "wind_speed", "hour", "day", "month")
+
+# Remove missing data (if necessary)
+train_merged <- na.omit(train_merged)
+X <- train_merged[, features]
+y <- train_merged$meter_reading
+
+
+```
+
+
+#### let's start fresh
+
+```{r}
+# Load libraries
+library(ggplot2)
+library(dplyr)
+
+# Load data
+setwd("C:/Users/Khalil/Desktop/Fall 24/CPT_S 575/Project/Data")
+building_metadata <- read.csv("building_metadata.csv")
+test_data <- read.csv("test 1-2.csv")
+train_data <- read.csv("train 1-2.csv")
+weather_test <- read.csv("weather_test.csv")
+weather_train <- read.csv("weather_train.csv")
+
+```
+```{r}
+head(building_metadata)
+summary(building_metadata)
+str(building_metadata)
+
+```
+
+
+```{r}
+# Load data
+setwd("C:/Users/Khalil/Desktop/Fall 24/CPT_S 575/Project/Data")
+building_metadata <- read.csv("building_metadata.csv")
+test_data <- read.csv("test1_2.csv")
+train_data <- read.csv("train1_2.csv")
+weather_test <- read.csv("weather_test.csv")
+weather_train1 <- read.csv("weather_train1.csv")
+```
+```{r}
+# Load necessary libraries
+install.packages("scales")
+library(ggplot2)
+library(dplyr)
+
+# Merge train data with building metadata to link building types
+train_with_metadata <- merge(train_data, building_metadata, by = "building_id", all.x = TRUE)
+
+# Check for NA values and drop rows with missing "primary_use" or "meter_reading"
+train_with_metadata <- train_with_metadata %>%
+  filter(!is.na(primary_use) & !is.na(meter_reading))
+
+# Aggregate meter readings by primary_use and calculate the total energy usage
+energy_by_building_type <- train_with_metadata %>%
+  group_by(primary_use) %>%
+  summarise(total_energy_usage = sum(meter_reading)) %>%
+  arrange(desc(total_energy_usage))
+
+# Plotting
+ggplot(energy_by_building_type, aes(x = total_energy_usage, y = reorder(primary_use, total_energy_usage))) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(
+    title = "Total Energy Usage by Building Type",
+    x = "Total Energy Usage (Meter Reading)",
+    y = "Building Type (Primary Use)"
+  ) +
+  theme_minimal(base_size = 14)
+
+
+```
+```{r}
+# Convert total energy usage to kWh
+energy_by_building_type <- train_with_metadata %>%
+  group_by(primary_use) %>%
+  summarise(total_energy_usage = sum(meter_reading) / 1000) %>% # Convert to kWh
+  arrange(desc(total_energy_usage))
+
+# Plotting with different colors
+ggplot(energy_by_building_type, aes(x = total_energy_usage, y = reorder(primary_use, total_energy_usage), fill = primary_use)) +
+  geom_bar(stat = "identity") +
+  labs(
+    title = "Total Energy Usage by Building Type",
+    x = "Total Energy Usage (kWh)", # Add units to the x-axis
+    y = "Building Type (Primary Use)"
+  ) +
+  theme_minimal(base_size = 14) +
+  scale_x_continuous(labels = scales::comma) + # Format numbers with commas
+  theme(legend.position = "none") # Optionally hide legend if it's not needed
+```
+
+
+```{r}
+library(scales) # For label formatting
+
+# Filter data to include valid square_feet, year_built, and meter_reading
+valid_data <- train_with_metadata %>%
+  filter(!is.na(square_feet) & !is.na(year_built) & !is.na(meter_reading))
+
+# Create a scatter plot to visualize the relationship
+ggplot(valid_data, aes(x = square_feet, y = meter_reading, color = year_built)) +
+  geom_point(alpha = 0.7, size = 1) + # Set point transparency and size
+  scale_color_viridis_c() + # Use the Viridis color scale
+  scale_x_continuous(
+    breaks = seq(0, 800000, by = 200000), # Set x-axis breaks
+    labels = label_comma() # Format labels with commas
+  ) +
+  labs(
+    title = "Square Feet, Year Built, vs. Energy Usage",
+    x = "Building Size (Square Feet)", 
+    y = "Energy Usage (Meter Reading)",
+    color = "Year Built"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "right")
+```
+```{r}
+# Load data
+setwd("C:/Users/Khalil/Desktop/Fall 24/CPT_S 575/Project/Data")
+building_metadata <- read.csv("building_metadata.csv")
+test1_2 <- read.csv("test1_2.csv")
+train_data <- read.csv("train1_2.csv")
+weather_test <- read.csv("weather_test.csv")
+weather_train1 <- read.csv("weather_train1.csv")
+```
+
+
+
+```{r}
+test1_2 <- data.frame(
+  meter = factor(rep(1:3, each = 10)),
+  timestamp = seq.POSIXt(from = as.POSIXct("2023-01-01"), by = "day", length.out = 30),
+  meter_reading = runif(30, 50, 500)
+)
+```
+
+```{r}
+test1_2$meter <- as.factor(test1_2$meter)
+
+ggplot(test1_2, aes(x = timestamp, y = meter_reading, color = meter, group = meter)) +
+  geom_line() +
+  labs(
+    title = "Daily Energy Usage Trends by Meter Type",
+    x = "Date",
+    y = "Meter Reading (Aggregate)",
+    color = "Meter Type"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(hjust = 0.5)
+  ) +
+  scale_y_continuous(labels = scales::comma) +
+  scale_x_datetime(date_labels = "%Y-%m-%d")
+
+```
+```{r}
+# Ensure the 'meter' column includes all levels (0, 1, 2, 3)
+test1_2$meter <- factor(test1_2$meter, levels = c("0", "1", "2", "3"))
+
+# Plotting the data
+ggplot(test1_2, aes(x = timestamp, y = meter_reading, color = meter, group = meter)) +
+  geom_line() +
+  labs(
+    title = "Daily Energy Usage Trends by Meter Type",
+    x = "Date",
+    y = "Meter Reading (Aggregate)",
+    color = "Meter Type"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(hjust = 0.5)
+  ) +
+  scale_y_continuous(labels = scales::comma) +
+  scale_x_datetime(date_labels = "%Y-%m-%d")
+
+```
+```{r}
+summary(test1_2$timestamp)
+head(test1_2$timestamp)
+
+test1_2$timestamp <- as.POSIXct(test1_2$timestamp, format = "%Y-%m-%d %H:%M:%S")
+test1_2$timestamp <- as.POSIXct(test1_2$timestamp, format = "%Y-%m-%d")
+sum(is.na(test1_2$timestamp))
+test1_2 <- test1_2[!is.na(test1_2$timestamp), ]
+
+# Generate proper timestamps for each meter type
+test1_2 <- data.frame(
+  meter = factor(rep(c("0", "1", "2", "3"), each = 10)),
+  timestamp = rep(seq.POSIXt(from = as.POSIXct("2023-01-01"), by = "day", length.out = 10), 4),
+  meter_reading = runif(40, 50, 500)
+)
+
+ggplot(test1_2, aes(x = timestamp, y = meter_reading, color = meter, group = meter)) +
+  geom_line() +
+  labs(
+    title = "Daily Energy Usage Trends by Meter Type",
+    x = "Date",
+    y = "Meter Reading (Aggregate)",
+    color = "Meter Type"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(hjust = 0.5)
+  ) +
+  scale_y_continuous(labels = scales::comma) +
+  scale_x_datetime(date_labels = "%Y-%m-%d")
+
+```
+```{r}
+# Correct the year to 2016 in the timestamp column
+test1_2$timestamp <- as.POSIXct(test1_2$timestamp, format = "%Y-%m-%d %H:%M:%S")
+test1_2$timestamp <- as.POSIXct(format(test1_2$timestamp, "2016-%m-%d %H:%M:%S"))
+
+```
+
+```{r}
+# Generate proper timestamps for each meter type with year 2016
+test1_2 <- data.frame(
+  meter = factor(rep(c("0", "1", "2", "3"), each = 10)),
+  timestamp = rep(seq.POSIXt(from = as.POSIXct("2016-01-01"), by = "day", length.out = 10), 4),
+  meter_reading = runif(40, 50, 500)
+)
+
+```
+
+```{r}
+library(ggplot2)
+library(scales)
+
+ggplot(test1_2, aes(x = timestamp, y = meter_reading, color = meter, group = meter)) +
+  geom_line() +
+  labs(
+    title = "Daily Energy Usage Trends by Meter Type (2016)",
+    x = "Date",
+    y = "Meter Reading (Aggregate)"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(hjust = 0.5)
+  ) +
+  scale_y_continuous(labels = scales::comma) +
+  scale_x_datetime(date_labels = "%Y-%m-%d") +
+  facet_wrap(~ meter, ncol = 2)  # Create a 2x2 grid of plots
+
+```
+
+```{r}
+library(ggplot2)
+library(scales)
+
+# List of unique meter types
+meters <- unique(test1_2$meter)
+
+# Loop through each meter type and create individual plots
+for (meter_type in meters) {
+  # Filter data for the current meter type
+  meter_data <- subset(test1_2, meter == meter_type)
+  
+  # Create the plot
+  p <- ggplot(meter_data, aes(x = timestamp, y = meter_reading)) +
+    geom_line(color = "blue") +
+    labs(
+      title = paste("Daily Energy Usage Trend for Meter", meter_type, "(2016)"),
+      x = "Date",
+      y = "Meter Reading (Aggregate)"
+    ) +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      plot.title = element_text(hjust = 0.5)
+    ) +
+    scale_y_continuous(labels = scales::comma) +
+    scale_x_datetime(date_labels = "%Y-%m-%d")
+  
+  # Print the plot
+  print(p)
+}
+
+```
+
+```{r}
+library(ggplot2)
+library(scales)
+
+# List of unique meter types
+meters <- unique(test1_2$meter)
+
+# Assign colors for each meter type
+meter_colors <- c("0" = "red", "1" = "blue", "2" = "green", "3" = "purple")
+
+# Loop through each meter type and create individual plots
+for (meter_type in meters) {
+  # Filter data for the current meter type
+  meter_data <- subset(test1_2, meter == meter_type)
+  
+  # Create the plot
+  p <- ggplot(meter_data, aes(x = timestamp, y = meter_reading)) +
+    geom_line(color = meter_colors[as.character(meter_type)]) +
+    labs(
+      title = paste("Daily Energy Usage Trend for Meter", meter_type, "(2016)"),
+      x = "Date",
+      y = "Meter Reading (Aggregate)"
+    ) +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      plot.title = element_text(hjust = 0.5)
+    ) +
+    scale_y_continuous(labels = scales::comma) +
+    scale_x_datetime(date_labels = "%Y-%m-%d")
+  
+  # Print the plot
+  print(p)
+}
+
+```
+
+```{r}
+# Install tidyr if not already installed
+if (!requireNamespace("tidyr", quietly = TRUE)) {
+    install.packages("tidyr")
+}
+
+# Load the required library
+library(tidyr)
+
+```
+
+```{r}
+options(repos = c(CRAN = "https://cran.rstudio.com/"))
+install.packages("naniar")
+install.packages("path_to_downloaded_package.tar.gz", repos = NULL, type = "source")
+
+```
+```{r}
+library(ggplot2)
+
+# Convert missing data to logical matrix
+missing_data <- as.data.frame(is.na(merged_data))
+
+# Create a heatmap using ggplot2
+ggplot(melt(missing_data), aes(Var2, Var1, fill = value)) +
+  geom_tile(color = "white") +
+  scale_fill_manual(values = c("TRUE" = "red", "FALSE" = "white"), name = "Missing") +
+  labs(title = "Missing Data Heatmap", x = "Columns", y = "Rows") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+
+```{r}
+install.packages("naniar")
+
+# Install and load required packages
+if (!requireNamespace("naniar", quietly = TRUE)) {
+  install.packages("naniar")
+}
+```
+
+```{r}
+install.packages("naniar")
+library(naniar)
+library(ggplot2)
+
+# Visualize missing data
+gg_miss_var(merged_data) +
+  labs(title = "Missing Data Heatmap by Variable", x = "Variables", y = "Number of Missing Values")
+
+# Alternatively, a full heatmap of missing data
+ggplot(data = as.data.frame(is.na(merged_data)), aes(x = 1:ncol(merged_data), y = 1:nrow(merged_data))) +
+  geom_tile(aes(fill = as.logical(unlist(merged_data)))) +
+  scale_fill_manual(values = c("TRUE" = "red", "FALSE" = "white")) +
+  labs(title = "Heatmap of Missing Data", x = "Columns", y = "Rows") +
+  theme_minimal()
+
+```{r}
+merged_data <- merged_data %>% drop_na(primary_use, square_feet, year_built, floor_count, meter_reading)
+
+```
+
+```{r}
+# Inspect the structure of the data
+str(merged_data)
+
+# Check for missing values in all relevant columns
+summary(merged_data)
+
+# Specifically check the `year_built` column for non-numeric or missing values
+table(is.na(merged_data$year_built))
+
+
+
+```
+```{r}
+# Remove rows with missing or invalid values in `year_built` or other relevant columns
+merged_data <- merged_data %>%
+  filter(!is.na(year_built), !is.na(primary_use), !is.na(square_feet), !is.na(floor_count), !is.na(meter_reading))
+
+# Ensure `year_built` is numeric
+merged_data$year_built <- as.numeric(merged_data$year_built)
+
+```
+```{r}
+# Group year_built into bins for better visualization
+merged_data <- merged_data %>%
+  mutate(year_built_group = cut(year_built, breaks = 10, include.lowest = TRUE))
+
+# Plot Year Built vs Meter Reading
+ggplot(merged_data, aes(x = year_built_group, y = meter_reading)) +
+  geom_boxplot() +
+  scale_y_log10() +
+  labs(title = "Year Built vs. Meter Reading", x = "Year Built (Binned)", y = "Meter Reading (Log Scale)") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+
+```{r}
+# Inspect cleaned data
+summary(cleaned_data)
+head(cleaned_data)
+
+# Check for problematic values
+table(is.na(cleaned_data$square_feet))
+table(is.na(cleaned_data$meter_reading))
+
+```
+
+
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+
+# Set working directory and load data
+setwd("C:/Users/Khalil/Desktop/Fall 24/CPT_S 575/Project/Data")
+
+# Load datasets
+building_metadata <- read.csv("building_metadata.csv")
+test1_2 <- read.csv("test1_2.csv")
+train_data <- read.csv("train1_2.csv")
+weather_test <- read.csv("weather_test.csv")
+weather_train1_2 <- read.csv("weather_train1_2.csv")
+
+# Merge building metadata with train data
+data <- merge(building_metadata, train_data, by = "building_id", all.x = TRUE)
+
+# Clean and filter the data
+data_clean <- data %>%
+  filter(!is.na(square_feet), !is.na(meter_reading)) %>%  # Remove missing values
+  filter(square_feet > 0, meter_reading > 0)             # Remove zero or negative values
+
+# Plot Square Feet vs Meter Reading
+ggplot(data_clean, aes(x = square_feet, y = meter_reading)) +
+  geom_point(alpha = 0.5, color = "orange") +            # Add scatter points with transparency
+  scale_x_log10() +                                      # Apply log scale to x-axis
+  scale_y_log10() +                                      # Apply log scale to y-axis
+  labs(
+    title = "Square Feet vs. Meter Reading",
+    x = "Square Feet (Log Scale)",
+    y = "Meter Reading (Log Scale)"
+  ) +
+  theme_minimal()                                        # Use a clean, minimal theme
+
+```
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+library(scales) # For formatting axis labels
+
+# Ensure data is clean (replace 'data' with your actual dataframe name)
+data_clean <- data %>%
+  filter(!is.na(square_feet), !is.na(meter_reading)) %>%  # Remove missing values
+  filter(square_feet > 0, meter_reading > 0)             # Remove zero or negative values
+
+# Plot Square Feet vs Meter Reading with formatted axis labels
+ggplot(data_clean, aes(x = square_feet, y = meter_reading)) +
+  geom_point(alpha = 0.5, color = "orange") +            # Add scatter points
+  scale_x_log10(labels = comma) +                        # Log scale for x-axis with formatted labels
+  scale_y_log10(labels = comma) +                        # Log scale for y-axis with formatted labels
+  labs(
+    title = "Square Feet vs. Meter Reading",
+    x = "Square Feet (Log Scale)",
+    y = "Meter Reading (Log Scale)"
+  ) +
+  theme_minimal()                                        # Minimal theme for a clean look
+
+```
+
+```{r}
+# Load datasets
+
+
+ggplot(data_clean, aes(x = meter_reading)) +
+    geom_histogram(binwidth = 10, fill = "blue", color = "white", alpha = 0.7) +
+    scale_x_log10() +
+    labs(title = "Distribution of Meter Reading", x = "Meter Reading (Log Scale)", y = "Frequency")
+
+```
+```{r}
+ggplot(data_clean, aes(x = as.factor(meter), y = meter_reading)) +
+    geom_boxplot() +
+    scale_y_log10() +
+    labs(title = "Meter Type vs. Meter Reading", x = "Meter Type", y = "Meter Reading (Log Scale)")
+
+```
+```{r}
+ggplot(data_clean, aes(x = primary_use, y = meter_reading)) +
+    geom_boxplot() +
+    scale_y_log10() +
+    labs(title = "Primary Use vs. Meter Reading", x = "Primary Use", y = "Meter Reading (Log Scale)") +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+```{r}
+ggplot(data_clean, aes(x = cut(year_built, breaks = 10), y = meter_reading)) +
+    geom_boxplot() +
+    scale_y_log10() +
+    labs(title = "Year Built vs. Meter Reading", x = "Year Built (Binned)", y = "Meter Reading (Log Scale)") + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+```{r}
+ggplot(data_clean, aes(x = as.Date(timestamp), y = meter_reading, group = 1)) +
+    geom_line() +
+    scale_y_log10() +
+    labs(title = "Energy Consumption Over Time", x = "Time", y = "Meter Reading (Log Scale)")
+
+```
+```{r}
+ggplot(data_clean, aes(x = as.factor(floor_count), y = meter_reading)) +
+    geom_boxplot() +
+    scale_y_log10() +
+    labs(title = "Floor Count vs. Meter Reading", x = "Floor Count", y = "Meter Reading (Log Scale)")
+
+```
+```{r}
+library(reshape2)
+library(corrplot)
+
+# Select numerical columns
+numeric_data <- data_clean %>% select(square_feet, meter_reading, year_built, floor_count)
+correlation_matrix <- cor(numeric_data, use = "complete.obs")
+
+# Plot heatmap
+corrplot(correlation_matrix, method = "color", tl.col = "black", tl.cex = 0.8, addCoef.col = "black")
+
+```
+```{r}
+library(lubridate)
+
+# Convert timestamp to Date
+data_clean$timestamp <- as.Date(data_clean$timestamp)
+
+# Calculate daily averages
+daily_avg <- data_clean %>%
+    group_by(timestamp) %>%
+    summarise(avg_meter_reading = mean(meter_reading, na.rm = TRUE))
+
+# Plot daily average energy consumption
+ggplot(daily_avg, aes(x = timestamp, y = avg_meter_reading)) +
+    geom_line(color = "blue") +
+    scale_y_log10() +
+    labs(title = "Daily Average Energy Consumption", x = "Date", y = "Average Meter Reading (Log Scale)") +
+    theme_minimal()
+
+```
+```{r}
+ggplot(data_clean, aes(x = as.Date(timestamp), y = meter_reading, color = as.factor(meter))) +
+    geom_line(alpha = 0.7) +
+    scale_y_log10() +
+    facet_wrap(~ meter) +
+    labs(title = "Energy Consumption by Meter Type Over Time", x = "Date", y = "Meter Reading (Log Scale)", color = "Meter Type") +
+    theme_minimal()
+
+```
+
+```{r}
+ggplot(data_clean, aes(x = as.factor(site_id), y = meter_reading)) +
+    geom_boxplot(fill = "purple", alpha = 0.7) +
+    scale_y_log10() +
+    labs(title = "Energy Consumption Across Sites", x = "Site ID", y = "Meter Reading (Log Scale)") +
+    theme_minimal()
+
+
+
+```
+
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(reshape2)
+
+# Assuming 'correlation_matrix' is a data frame or matrix containing the correlations
+# Convert the correlation matrix to a format suitable for ggplot
+correlation_data <- melt(correlation_matrix)
+
+# Plot the heatmap
+ggplot(data = correlation_data, aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0, 
+                       limits = c(-1, 1), space = "Lab", name = "Correlation") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "Correlation Matrix Heatmap", x = "Variables", y = "Variables")
+
+```
+
+```{r}
+# Load necessary libraries
+library(dplyr)
+
+setwd("C:/Users/Khalil/Desktop/Fall 24/CPT_S 575/Project/Data")
+building_metadata <- read.csv("building_metadata.csv")
+train_data <- read.csv("train1_2.csv")
+weather_train <- read.csv("weather_train1_2.csv")
+
+# Assuming the datasets are already loaded:
+# building_metadata <- read.csv("building_metadata.csv")
+# train_data <- read.csv("train1_2.csv")
+# weather_train <- read.csv("weather_train1_2.csv")
+
+# Merge building metadata with training data
+train_merged <- train_data %>%
+  left_join(building_metadata, by = "building_id")
+
+# Convert timestamps to datetime format for merging with weather data
+train_merged$timestamp <- as.POSIXct(train_merged$timestamp, format = "%m/%d/%Y %H:%M")
+weather_train$timestamp <- as.POSIXct(weather_train$timestamp, format = "%m/%d/%Y %H:%M")
+
+# Merge weather data with training data based on site_id and timestamp
+train_merged <- train_merged %>%
+  left_join(weather_train, by = c("site_id", "timestamp"))
+
+# Add derived columns
+train_merged <- train_merged %>%
+  mutate(
+    energy_per_sqft = meter_reading / square_feet,
+    building_age = 2024 - year_built
+  )
+
+# Group and aggregate data
+agg_data <- train_merged %>%
+  group_by(primary_use, building_age, floor_count) %>%
+  summarise(
+    avg_energy_usage = mean(meter_reading, na.rm = TRUE),
+    avg_energy_per_sqft = mean(energy_per_sqft, na.rm = TRUE),
+    avg_temp = mean(air_temperature, na.rm = TRUE)
+  )
+
+# Print the aggregated data
+print(agg_data)
+```
+```{r}
+library(ggplot2)
+
+setwd("C:/Users/Khalil/Desktop/Fall 24/CPT_S 575/Project/Data")
+
+
+# Load the dataset (update the path as necessary)
+data <- read.csv("Aggregated_Energy_and_Building_Characteristics_Data.csv")
+
+# Sort the data by average energy usage per square foot
+data_sorted <- data[order(-data$avg_energy_per_sqft), ]
+
+# Create the bar plot using ggplot2
+ggplot(data_sorted, aes(x = reorder(primary_use, -avg_energy_per_sqft), y = avg_energy_per_sqft)) +
+  geom_bar(stat = "identity", fill = "dark blue") +
+  theme_minimal() +
+  labs(
+    title = "Energy Usage per Square Foot by Building Type",
+    x = "Building Type (Primary Use)",
+    y = "Average Energy Usage per Square Foot"
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
